@@ -84,6 +84,11 @@ namespace SpravceFinanci_v2
       /// </summary>
       private byte ZavrenoBezUlozeni;
 
+      /// <summary>
+      /// Příznaková hodnota pro upravovací režim okna (okno pro úpravu záznamu).
+      /// </summary>
+      private bool RezimUpravy;
+
 
 
       /// <summary>
@@ -114,6 +119,7 @@ namespace SpravceFinanci_v2
          // Úvodní nastavení okna
          Title = "Úprava existujícího záznamu";
          Icon = new BitmapImage(new Uri(Path.Combine(Validace.VratCestuSlozkyAplikace(), "Icons\\Disketa.png")));
+         RezimUpravy = true;
 
          // Úvodní nastavení interních proměnných
          Nazev = zaznam.Name;
@@ -148,6 +154,7 @@ namespace SpravceFinanci_v2
          // Úvodní nastavení okna
          Title = "Přidat nový záznam";
          Icon = new BitmapImage(new Uri(Path.Combine(Validace.VratCestuSlozkyAplikace(), "Icons\\NewFile.png")));
+         RezimUpravy = false;
 
          // Úvodní nastavení interních proměnných
          Nazev = "";
@@ -281,6 +288,13 @@ namespace SpravceFinanci_v2
             // Nastavení parametrů zadaných uživatelem do záznamu v kontroléru aplikace
             Controller.UpravVybranyZaznam(Nazev, Datum, PrijemVydaj_Hodnota, PrijemNeboVydaj, Poznamka, Kategorie);
 
+            // Kontrola zda je okno otevřeno v režimu pro úpravu záznamu
+            if (RezimUpravy == true) 
+            {
+               // Uložení provedených změn daného záznamu do databáze
+               Controller.UlozUpravyVybranehoZaznamu();
+            }
+
             // Zavření okna
             ZavrenoBezUlozeni = 0;
             Close();
@@ -299,12 +313,18 @@ namespace SpravceFinanci_v2
       private void NastavPolozkuButton_Click(object sender, RoutedEventArgs e)
       {
          // Pokud jsou nějaké položky v seznamu položek určených k zobrazení, otevře se okno pro úpravu položek
-         if (Controller.VratPocetZobrazovanychPolozek() > 0)
+         if (Controller.VratPocetPolozekVybranehoZaznamu() > 0)
             Controller.OtevriOknoPridatUpravitPolozky(0);
 
          // Pokud v sezanmu položek žádné nejsou, otevře se okno pro přidání nových položek
          else
             Controller.OtevriOknoPridatUpravitPolozky(1);
+
+         // Úprava kontextu tlačítka pro práci s položkami
+         if (Controller.VratPocetPolozekVybranehoZaznamu() > 0)
+            NastavPolozkuButton.Content = "Upravit \npoložky";
+         else
+            NastavPolozkuButton.Content = "Přidat \npoložky";
       }
 
       /// <summary>

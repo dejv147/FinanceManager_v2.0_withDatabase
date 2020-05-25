@@ -170,6 +170,9 @@ namespace SpravceFinanci_v2
       /// </summary>
       private void AktualizujZobrazeniZaznamu()
       {
+         // Aktualizace dat v interní kolekci pro možnost vykreslení aktuálních záznamů 
+         Controller.AktualizujZobrazovaneZaznamy();
+
          // Vykreslení seznamu záznamů
          Controller.VykresliSeznamZaznamu();
 
