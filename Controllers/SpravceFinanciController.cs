@@ -140,6 +140,12 @@ namespace SpravceFinanci_v2
       /// </summary>
       private ObservableCollection<Item> AktualneZobrazovanePolozky;
 
+      /// <summary>
+      /// Interní kolekce uchovávající položky patřící aktuálnímu záznamu. 
+      /// Tato kolekce slouží pro uchování položek pro případ, že v kolekci zobrazovaných položek dojde ke změnám, které nebudou určeny k uložení.
+      /// </summary>
+      private ObservableCollection<Item> PolozkyVybranehoZaznamu;
+
 
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +156,7 @@ namespace SpravceFinanci_v2
       /// Konstruktor provádí inicializaci interních proměnných včetně všech tříd, které spravuje.
       /// </summary>
       private SpravceFinanciController() { }
-      
+
       /// <summary>
       /// Statická proměnná pro uložení instance této třídy
       /// </summary>
@@ -165,7 +171,7 @@ namespace SpravceFinanci_v2
          // Pokud instance nebyla dosud vytvořena (první volání funkce) vytvoří se nová instance
          if (instance == null)
             instance = new SpravceFinanciController();
-            
+
          // Předání instance třídy
          return instance;
       }
@@ -189,13 +195,17 @@ namespace SpravceFinanci_v2
          obsluhyUdalosti = new ObsluhyUdalosti();
          databaze = new Databaze();
 
+         // Vytvoření několika úvodních kategorií při prvotním spuštění aplikace
+         //VytvorPredDefinovaneKategorie();
+
          // Inicializace interních proměnných
          JmenoPrihlasenehoUzivatele = "";
          PrihlasenyUzivatel = null;
          VybranyZaznam = null;
          AktualneZobarovaneZaznamy = new ObservableCollection<Transaction>();
          AktualneZobrazovanePolozky = new ObservableCollection<Item>();
-         
+         PolozkyVybranehoZaznamu = new ObservableCollection<Item>();
+
          // Načtení barvy pozadí do interní proměnné
          BarvaPozadi = HlavniOkno.HlavniOknoGrid.Background;
       }
@@ -261,7 +271,7 @@ namespace SpravceFinanci_v2
             prihlaseni.ShowDialog();
 
             // Kontrola přihlášení uživatele (pokud uživatel není přihlášen vykreslí se anonymní obrazovka)
-            if (!ZkontrolujPrihlaseniUzivatele(VratJmenoPrihlasenehoUzivatele())) 
+            if (!ZkontrolujPrihlaseniUzivatele(VratJmenoPrihlasenehoUzivatele()))
             {
                OdhlasUzivatele();
                return;
@@ -312,7 +322,7 @@ namespace SpravceFinanci_v2
          double Vydaje_hodnota = 0;
 
          // Výpočet celkových příjmů a výdajů sečtením hodnot ze všech záznamů z aktuálního měsíce
-         foreach (Transaction zaznam in databaze.VratZaznamyAktualnihoMesice(PrihlasenyUzivatel.Id)) 
+         foreach (Transaction zaznam in databaze.VratZaznamyAktualnihoMesice(PrihlasenyUzivatel.Id))
          {
             // Přičtení hodonty aktuálního záznamu k celkové hodnotě příjmů nebo výdajů (dle kategorie záznamu)
             if (zaznam.Income == true)
@@ -406,7 +416,7 @@ namespace SpravceFinanci_v2
       }
 
       /// <summary>
-      /// Předání položek v interní pomocné kolekci zpracovávaných položek do kolekce položek vybraného záznamu v databázi.
+      /// Předání položek v interní pomocné kolekci zpracovávaných položek vybraného záznamu do kolekce položek vybraného záznamu v databázi.
       /// </summary>
       public void PridejZobrazovanePolozkyDoVybranehoZaznamu()
       {
@@ -414,12 +424,20 @@ namespace SpravceFinanci_v2
          databaze.SmazVsechnyPolozky(VybranyZaznam.Id);
 
          // Postupné uložení položek v aktuálně vykreslovaném seznamu do databáze
-         foreach (Item polozka in AktualneZobrazovanePolozky)
+         foreach (Item polozka in PolozkyVybranehoZaznamu)
          {
             // Přidání nové položky do kolekce položek vybraného záznamu (pokud tato položka již v kolekci neexistuje -> nová položka)
             if (!VybranyZaznam.Items.Contains(polozka))
                databaze.VytvorNovouPolozku(VybranyZaznam.Id, polozka.Name, polozka.Price, polozka.Note, polozka.Category);
          }
+      }
+
+      /// <summary>
+      /// Přidání položek v kolekci aktuálně zobrazovaných položek do kolekce položek patřící vybranému záznamu.
+      /// </summary>
+      public void PridejZobrazovanePolozkyDoKolekcePolozekProVybranyZaznam()
+      {
+         PolozkyVybranehoZaznamu = AktualneZobrazovanePolozky;
       }
 
       /// <summary>
@@ -430,7 +448,7 @@ namespace SpravceFinanci_v2
       {
          foreach (Item p in AktualneZobrazovanePolozky)
          {
-            if (p.Id == polozka.Id) 
+            if (p.Id == polozka.Id)
                VybranaPolozka = p;
          }
       }
@@ -451,6 +469,15 @@ namespace SpravceFinanci_v2
       public int VratPocetZobrazovanychPolozek()
       {
          return AktualneZobrazovanePolozky.Count;
+      }
+
+      /// <summary>
+      /// Vrátí počet položek v kolekci uchovávající položky aktuálně zpracovávaného záznamu.
+      /// </summary>
+      /// <returns>Počet položek vybraného záznamu</returns>
+      public int VratPocetPolozekVybranehoZaznamu()
+      {
+         return PolozkyVybranehoZaznamu.Count;
       }
 
       /// <summary>
@@ -502,13 +529,13 @@ namespace SpravceFinanci_v2
             else
             {
                // Načtení položek k úpravě do interní pomocné kolekce
-               AktualneZobrazovanePolozky = databaze.VratVsechnyPolozkyZaznamu(VybranyZaznam.Id);
+               AktualneZobrazovanePolozky = PolozkyVybranehoZaznamu;
 
                // Úvodní nastavení okna 
                pridatUpravitPolozky.UvodniNastaveni(false);
 
                // Úvodní vykreslení seznamu položek
-               VykresliSeznamPolozek();  
+               VykresliSeznamPolozek();
             }
 
             // Otevření ona pro přidání nebo úpravu záznamu
@@ -548,11 +575,15 @@ namespace SpravceFinanci_v2
             // Vytvoření instance okna pro přidání a upravení záznamu
             PridatUpravitZaznam_Window pridatUpravitWindow = new PridatUpravitZaznam_Window();
 
+            // Smazání obsahu kolekce položek pro možnost přidání nových položek k záznamu
+            AktualneZobrazovanePolozky.Clear();
+            PolozkyVybranehoZaznamu.Clear();
+
             // Úvodní nastavení okna pro práci se záznamem
             if (PridatNeboUpravit == 1)
             {
-                // Pokud je okno otevřeno v řežimu přidání nového záznamu, vytvoří se nový záznam 
-                VybranyZaznam = new Transaction();
+               // Pokud je okno otevřeno v řežimu přidání nového záznamu, vytvoří se nový záznam 
+               VybranyZaznam = new Transaction();
 
                // Úvodní nastavení okna  
                pridatUpravitWindow.UvodniNastaveniRezimuPridavani();
@@ -560,23 +591,30 @@ namespace SpravceFinanci_v2
                // Otevření ona pro přidání nového záznamu
                pridatUpravitWindow.ShowDialog();
 
+               // Kontrola zda byl záznam vytvořen (pokud bylo okno zavřeno bez uložení změn, nový záznam se nevytvoří)
+               if ((VybranyZaznam.Name == null) || !(VybranyZaznam.Name.Length > 0))
+               {
+                  VybranyZaznam = null;
+                  PolozkyVybranehoZaznamu.Clear();
+                  return;
+               }
+
                // Přidání nově vytvořeného (nastaveného) záznamu do databáze
-               PridatVybranyZaznamJakoNovy(); 
+               PridatVybranyZaznamJakoNovy();
             }
-            else
+            else  // Režim úpravy
             {
                // Úvodní nastavení okna včetně načtení parametrů upravovaného záznamu
                pridatUpravitWindow.UvodniNastaveniRezimuUpravovani(VybranyZaznam);
 
                // Pokud záznam obsahuje seznam položek, načtou se do interní kolekce pro možnost následného otevření okna pro úpravu položek
                if (VybranyZaznam.Items.Count() > 0)
-                  AktualneZobrazovanePolozky = databaze.VratVsechnyPolozkyZaznamu(VybranyZaznam.Id);
+                  PolozkyVybranehoZaznamu = databaze.VratVsechnyPolozkyZaznamu(VybranyZaznam.Id);
 
                // Otevření ona pro úpravu záznamu
                pridatUpravitWindow.ShowDialog();
 
-               // Uložení provedených změn do databáze
-               UpravZaznam(VybranyZaznam.Id, VybranyZaznam.Name, VybranyZaznam.Date, VybranyZaznam.Price, VybranyZaznam.Income, VybranyZaznam.Note, VybranyZaznam.Category1);
+               // Uložení úprav vybraného záznamu je provedeno v obsluze tlačítka ULOŽIT v otevřeném okně.
             }
 
             // Aktualizace vykreslení seznamu v hlavním okně aplikace
@@ -646,7 +684,7 @@ namespace SpravceFinanci_v2
          catch (Exception ex)
          {
             MessageBox.Show(ex.Message, "Chyba", MessageBoxButton.OK, MessageBoxImage.Error);
-         }  
+         }
       }
 
       /// <summary>
@@ -732,7 +770,7 @@ namespace SpravceFinanci_v2
          }
       }
 
-      
+
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       /* Metody pro práci s kategoriemi položek i záznamů */
@@ -747,11 +785,11 @@ namespace SpravceFinanci_v2
          // Smazání obsahu rozbalovací nabídky
          RozbalovaciNabidka.Items.Clear();
 
-            // Nastavení jednotlivých prvků v rozbalovací nabídce
-            foreach (Category kategorie in databaze.VratKolekciKategorii())
-            {
-                RozbalovaciNabidka.Items.Add(kategorie.Description);
-            }
+         // Nastavení jednotlivých prvků v rozbalovací nabídce
+         foreach (Category kategorie in databaze.VratKolekciKategorii())
+         {
+            RozbalovaciNabidka.Items.Add(kategorie.Description);
+         }
       }
 
       /// <summary>
@@ -760,7 +798,7 @@ namespace SpravceFinanci_v2
       /// <returns>Počet kategorií</returns>
       public int VratPocetKategorii()
       {
-            return databaze.VratPocetKategorii();
+         return databaze.VratPocetKategorii();
       }
 
       /// <summary>
@@ -771,6 +809,50 @@ namespace SpravceFinanci_v2
       {
          return databaze.VratKolekciKategorii();
       }
+
+
+      /// <summary>
+      /// Metoda pro vytvoření několika předdefinovaných kategorií včetně uložení těchto kategorií do databáze.
+      /// Tato metoda je volána jen při prvotním spuštění aplikace, kdy je databáze teprve vytvářena. 
+      /// Po vytvoření dat v tabulce kategorie je třeba tuto metodu již nevolat!!!
+      /// </summary>
+      public void VytvorPredDefinovaneKategorie()
+      {
+         databaze.VytvorNovouKategorii("Nevybrano", "Nevybráno");
+         databaze.VytvorNovouKategorii("Alkohol", "Alkohol");
+         databaze.VytvorNovouKategorii("Auto", "Auto");
+         databaze.VytvorNovouKategorii("Brigada", "Brigáda");
+         databaze.VytvorNovouKategorii("Cestovani", "Cestování");
+         databaze.VytvorNovouKategorii("Dar", "Dar / Dárek");
+         databaze.VytvorNovouKategorii("Divadlo", "Divadlo");
+         databaze.VytvorNovouKategorii("DomaciMazlicek", "Domácí mazlíček");
+         databaze.VytvorNovouKategorii("Domactnost", "Domácnost");
+         databaze.VytvorNovouKategorii("Domov", "Domov");
+         databaze.VytvorNovouKategorii("Drogerie", "Drogérie");
+         databaze.VytvorNovouKategorii("Elektronika", "Elektronika");
+         databaze.VytvorNovouKategorii("Hobby", "Hobby");
+         databaze.VytvorNovouKategorii("Inkaso", "Inkaso");
+         databaze.VytvorNovouKategorii("Jidlo", "Jídlo, Potraviny");
+         databaze.VytvorNovouKategorii("Kino", "Kino");
+         databaze.VytvorNovouKategorii("Kosmetika", "Kosmetika");
+         databaze.VytvorNovouKategorii("Kultura", "Kultůra");
+         databaze.VytvorNovouKategorii("Najem", "Nájemné");
+         databaze.VytvorNovouKategorii("Napoje", "Nápoje");
+         databaze.VytvorNovouKategorii("Nezarazeno", "Nezařaditelné");
+         databaze.VytvorNovouKategorii("Obleceni", "Oblečení");
+         databaze.VytvorNovouKategorii("Partner", "Partner / Partnerka");
+         databaze.VytvorNovouKategorii("PC", "Pc");
+         databaze.VytvorNovouKategorii("Restaurace", "Restaurace");
+         databaze.VytvorNovouKategorii("Rodina", "Rodina");
+         databaze.VytvorNovouKategorii("Sport", "Sport");
+         databaze.VytvorNovouKategorii("Skola", "Škola");
+         databaze.VytvorNovouKategorii("Telefon", "Telefon / Mobil");
+         databaze.VytvorNovouKategorii("Vyplata", "Výplata");
+         databaze.VytvorNovouKategorii("Vzdelani", "Vzdělávání");
+         databaze.VytvorNovouKategorii("Zamestnani", "Zaměstnání / Práce");
+         databaze.VytvorNovouKategorii("Zdravi", "Zdraví");
+      }
+
 
 
 
@@ -815,7 +897,7 @@ namespace SpravceFinanci_v2
          if (AktualneZobarovaneZaznamy.Count == 0)
          {
             AktualizujZobrazovaneZaznamy();
-            throw new ArgumentException("Nebyly nalezeny žádné záznamy se zadaným jménem!");
+            throw new ArgumentException("Nebyly nalezeny žádné záznamy se zadaným názvem!");
          }
       }
 
@@ -951,7 +1033,7 @@ namespace SpravceFinanci_v2
       {
          foreach (Transaction z in databaze.DB_data.Transactions)
          {
-            if (z.Id == zaznam.Id) 
+            if (z.Id == zaznam.Id)
                VybranyZaznam = z;
          }
       }
@@ -982,8 +1064,9 @@ namespace SpravceFinanci_v2
             switch (VybranaVolba)
             {
                case MessageBoxResult.Yes:
-                  databaze.OdstranZaznam(VybranyZaznam);    // Smazání záznamu
-                  VybranyZaznam = null;                     // Zrušení reference na již neexistující záznam
+                  databaze.OdstranZaznam(VybranyZaznam);             // Smazání záznamu z databáze
+                  AktualneZobarovaneZaznamy.Remove(VybranyZaznam);   // Smazání záznamu z kolekce aktuálně vykreslovaných záznamů
+                  VybranyZaznam = null;                              // Zrušení reference na již neexistující záznam
                   break;
 
                case MessageBoxResult.No:
@@ -1001,8 +1084,11 @@ namespace SpravceFinanci_v2
       /// </summary>
       public void PridatVybranyZaznamJakoNovy()
       {
-         // Přidání vybraného záznamu jako nový
-         databaze.VytvorNovyZaznam(PrihlasenyUzivatel.Id, VybranyZaznam.Name, VybranyZaznam.Price, VybranyZaznam.Note, VybranyZaznam.Category, VybranyZaznam.Income, VybranyZaznam.Date);
+         // Přidání vybraného záznamu jako nový do databáze včetně načtení nově vaytvořeného záznamu do instance vybraného záznamu
+         VyberZaznam(databaze.VytvorNovyZaznam(PrihlasenyUzivatel.Id, VybranyZaznam.Name, VybranyZaznam.Price, VybranyZaznam.Note, VybranyZaznam.Category, VybranyZaznam.Income, VybranyZaznam.Date));
+
+         // Uložení seznamu položek do nově vytvořeného záznamu
+         PridejZobrazovanePolozkyDoVybranehoZaznamu();
 
          // Odstranění reference na nový záznam v interní proměnné (zrušení označení nového záznamu)
          ZrusOznaceniZaznamu();
@@ -1013,7 +1099,13 @@ namespace SpravceFinanci_v2
       /// </summary>
       public void UlozUpravyVybranehoZaznamu()
       {
+         // Uložení provedeným změn do databáze
          databaze.UpravZaznam(VybranyZaznam.Id, VybranyZaznam.Name, VybranyZaznam.Price, VybranyZaznam.Note, VybranyZaznam.Category, VybranyZaznam.Income, VybranyZaznam.Date);
+
+         // Uložení provedených změn v kolekci položek upravovaného záznamu
+         PridejZobrazovanePolozkyDoVybranehoZaznamu();
+
+         // Zrušení označení upravovaného záznamu
          ZrusOznaceniZaznamu();
       }
 
@@ -1169,7 +1261,7 @@ namespace SpravceFinanci_v2
          {
             MessageBox.Show(ex.Message, "Chyba", MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
-         } 
+         }
       }
 
       /// <summary>
@@ -1379,12 +1471,12 @@ namespace SpravceFinanci_v2
       }
 
 
-      
+
 
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       /* Metody pro práci s daty (export záznamů) */
-    
+
       /// <summary>
       /// Metoda pro export dat v kolekci aktuálně zobrazovaných dat (vybraná data v okně Vyhledat) do souboru ve zvolené formátu.
       /// </summary>
