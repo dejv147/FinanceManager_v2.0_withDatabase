@@ -73,6 +73,10 @@ namespace SpravceFinanci_v2
       /// <param name="Popis">Název kategorie s diakritikou (viditelné pro uživatele)</param>
       public void VytvorNovouKategorii(string Nazev, string Popis)
       {
+         // Kontrola zda nově vytvářená kategorie v databázi již neexistuje
+         if (DB_data.Categories.First(c => c.Name == Nazev && c.Description == Popis) != null)
+            return;
+
          // Vytvoření nové kategorie
          Category newCategory = new Category();
          newCategory.Name = Nazev;
@@ -91,11 +95,8 @@ namespace SpravceFinanci_v2
       /// <returns>Počet kategorií</returns>
       public int VratPocetKategorii()
       {
-         // Pomocná proměnná
-         int Pocet = 0;
-
          // Zjištění celkového počtu prvků v tabulce kategorií
-         Pocet = DB_data.Categories.Count();
+         int Pocet = DB_data.Categories.Count();
 
          // Návratová hodnota
          return Pocet;
@@ -134,6 +135,7 @@ namespace SpravceFinanci_v2
 
          return Kategorie.First();
       }
+
 
 
 
@@ -209,19 +211,19 @@ namespace SpravceFinanci_v2
       /// </summary>
       /// <returns>Kolekce uživatelů</returns>
       public List<User> VratKolekciUzivatelu()
-        {
-            // Pomocná proměnná
-            List<User> KolekceUzivatelu = new List<User>();
+      {
+         // Pomocná proměnná
+         List<User> KolekceUzivatelu = new List<User>();
 
-            // Načtení všech prvků z tabulky uživatelů
-            foreach (User user in DB_data.Users) 
-            {
-                KolekceUzivatelu.Add(user);
-            }
+         // Načtení všech prvků z tabulky uživatelů
+         foreach (User user in DB_data.Users)
+         {
+            KolekceUzivatelu.Add(user);
+         }
 
-            // Návratová hodnota
-            return KolekceUzivatelu;
-        }
+         // Návratová hodnota
+         return KolekceUzivatelu;
+      }
 
 
 
@@ -271,7 +273,7 @@ namespace SpravceFinanci_v2
          // Přidání načtených záznamů do pomocné kolekce
          foreach (var zaznam in Zaznamy)
          {
-             KolekceZaznamu.Add((Transaction)zaznam);
+            KolekceZaznamu.Add((Transaction)zaznam);
          }
 
          // Návratová hodnota
@@ -363,8 +365,8 @@ namespace SpravceFinanci_v2
       {
          // LINQ dotaz pro výběr všech záznamů splňující potřebné podmínky
          var ZaznamyDleKategorie = from zaznam in DB_data.Transactions
-                               where ((zaznam.User == ID_Uzivatele) && (zaznam.Category == ID_Kategorie))
-                               select zaznam;
+                                   where ((zaznam.User == ID_Uzivatele) && (zaznam.Category == ID_Kategorie))
+                                   select zaznam;
 
          // Vytvoření kolekce pro návratovou hodnotu za účelem převedení výstupu z LINQ dotazu na potřebný datový typ
          ObservableCollection<Transaction> Kolekce = new ObservableCollection<Transaction>();
@@ -467,24 +469,29 @@ namespace SpravceFinanci_v2
       /// <param name="ID_Kategorie">ID kategorie, do které záznam spadá</param>
       /// <param name="PrijemNeboVydaj">TRUE = příjem, FALSE = výdaj</param>
       /// <param name="Datum">Datum záznamu</param>
-      public void VytvorNovyZaznam(int ID_Uzivatele, string Nazev, decimal Cena, string Poznamka, int ID_Kategorie, bool PrijemNeboVydaj, DateTime Datum)
+      public Transaction VytvorNovyZaznam(int ID_Uzivatele, string Nazev, decimal Cena, string Poznamka, int ID_Kategorie, bool PrijemNeboVydaj, DateTime Datum)
       {
          // Vytvoření nového záznamu
-         Transaction newTransaction = new Transaction();
-         newTransaction.User = ID_Uzivatele;
-         newTransaction.Category = ID_Kategorie;
-         newTransaction.Name = Nazev;
-         newTransaction.Price = Cena;
-         newTransaction.Note = Poznamka;
-         newTransaction.Income = PrijemNeboVydaj;
-         newTransaction.Date = Datum;
-         newTransaction.Creation_Date = DateTime.Now.Date;
+         Transaction newTransaction = new Transaction
+         {
+            User = ID_Uzivatele,
+            Category = ID_Kategorie,
+            Name = Nazev,
+            Price = Cena,
+            Note = Poznamka,
+            Income = PrijemNeboVydaj,
+            Date = Datum,
+            Creation_Date = DateTime.Now
+         };
 
          // Přidání nového záznamu do tabulky v databázi
          DB_data.Transactions.Add(newTransaction);
 
          // Uložení provedených změn
          DB_data.SaveChanges();
+
+         // Vrácení instance nově vytvořeného záznamu v databázi
+         return newTransaction;
       }
 
       /// <summary>
@@ -590,12 +597,14 @@ namespace SpravceFinanci_v2
       public void VytvorNovouPolozku(int ID_Zaznamu, string Nazev, decimal Cena, string Poznamka, int ID_Kategorie)
       {
          // Vytvoření nové položky
-         Item newItem = new Item();
-         newItem.Name = Nazev;
-         newItem.Note = Poznamka;
-         newItem.Price = Cena;
-         newItem.Transaction = ID_Zaznamu;
-         newItem.Category = ID_Kategorie;
+         Item newItem = new Item
+         {
+            Name = Nazev,
+            Note = Poznamka,
+            Price = Cena,
+            Transaction = ID_Zaznamu,
+            Category = ID_Kategorie
+         };
 
          // Přidání nové položky do tabulky v databázi
          DB_data.Items.Add(newItem);
